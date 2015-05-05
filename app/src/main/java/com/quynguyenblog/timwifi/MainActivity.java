@@ -28,6 +28,7 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -157,7 +158,6 @@ public class MainActivity extends ActionBarActivity {
 
         //noinspection SimplifiableIfStatement
 
-
         return super.onOptionsItemSelected(item);
     }
 
@@ -182,7 +182,8 @@ public class MainActivity extends ActionBarActivity {
                         @Override
                         public void onCameraChange(CameraPosition cameraPosition) {
                             mCurrentCamera = cameraPosition.target;
-                            Log.d("quylogcat","Lat:"+mCurrentCamera.latitude+",Lng:"+mCurrentCamera.longitude);
+                            //Log.d("quylogcat","Lat:"+mCurrentCamera.latitude+",Lng:"+mCurrentCamera.longitude);
+                            mRequestQueue.cancelAll(TAG);
                         }
                     });
                 }
@@ -288,6 +289,7 @@ public class MainActivity extends ActionBarActivity {
                         Log.d("quylogcat", error.getMessage());
                     }
                 });
+        jsonArrayRequest.setTag(TAG);
         mRequestQueue.add(jsonArrayRequest);
         return modelArrayList;
     }
