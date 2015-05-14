@@ -1,35 +1,20 @@
 package com.quynguyenblog.timwifi;
 
-import android.app.ActionBar;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.content.IntentFilter;
-import android.location.Address;
-import android.location.Geocoder;
 import android.location.Location;
-import android.location.LocationListener;
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
-import android.preference.DialogPreference;
-import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
-import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -43,12 +28,12 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
 import com.google.android.gms.maps.*;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.quynguyenblog.timwifi.adapter.MyAdapter;
 import com.quynguyenblog.timwifi.adapter.WifiListAdapter;
+import com.quynguyenblog.timwifi.app.AppController;
 import com.quynguyenblog.timwifi.core.ConnectionChanged;
 import com.quynguyenblog.timwifi.core.GPSTracking;
 import com.quynguyenblog.timwifi.model.WifiModel;
@@ -57,11 +42,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 
@@ -73,7 +55,11 @@ public class MainActivity extends ActionBarActivity {
     private Toolbar toolbar;
 
     private String[] TITLES = {"Home","Event","Mail","Shop","Travel"};
-    private int[] ICONS = {R.mipmap.ic_launcher,R.mipmap.ic_launcher,R.mipmap.ic_launcher,R.mipmap.ic_launcher,R.mipmap.ic_launcher};
+    private int[] ICONS = {R.mipmap.ic_launcher,
+            R.mipmap.ic_launcher,
+            R.mipmap.ic_launcher,
+            R.mipmap.ic_launcher,
+            R.mipmap.ic_launcher};
     private String NAME = "Quy Nguyen";
     private String EMAIL = "quynguyen3490@gmail.com";
     private int PROFILE = R.mipmap.ic_launcher;
@@ -86,13 +72,10 @@ public class MainActivity extends ActionBarActivity {
 
     GoogleMap mGoogleMap;
     Location mLocation;
-    LatLng mCurrentCamera;
     private int DEFAULT_ZOOM = 15;
     private double DEFAULT_DISTANCE = 0.3; //kilometer
     GPSTracking mGPSTracking;
 
-    ArrayList<WifiModel> mModelArrayList;
-    WifiListAdapter mWifiListAdapter;
     ListView mWifiListView;
 
     final static String SERVER_URL = "http://quy.ddns.net/timwifi/wifi";
@@ -138,7 +121,7 @@ public class MainActivity extends ActionBarActivity {
 
 //        getWifiFromServer(mGPSTracking.getLat(), mGPSTracking.getLng());
 
-        mWifiListView.setAdapter(new WifiListAdapter(this,getWifiFromServer(mGPSTracking.getLat(), mGPSTracking.getLng())));
+        getWifiFromServer(mLocation.getLatitude(),mLocation.getLongitude());
     }
 
 
@@ -181,9 +164,9 @@ public class MainActivity extends ActionBarActivity {
                     mGoogleMap.setOnCameraChangeListener(new GoogleMap.OnCameraChangeListener() {
                         @Override
                         public void onCameraChange(CameraPosition cameraPosition) {
-                            mCurrentCamera = cameraPosition.target;
-                            //Log.d("quylogcat","Lat:"+mCurrentCamera.latitude+",Lng:"+mCurrentCamera.longitude);
-                            mRequestQueue.cancelAll(TAG);
+//                            AppController.getInstance().cancelPendingRequest(AppController.TAG);
+//                            LatLng currentCamera = cameraPosition.target;
+//                            getWifiFromServer(currentCamera.latitude,currentCamera.longitude);
                         }
                     });
                 }
@@ -216,8 +199,6 @@ public class MainActivity extends ActionBarActivity {
     }
 
     public void postWifiToServer(final String wifiPass){
-        mRequestQueue = Volley.newRequestQueue(getApplicationContext());
-
         StringRequest stringRequest = new StringRequest(Request.Method.POST, SERVER_URL,
                 new Response.Listener<String>() {
                     @Override
@@ -232,7 +213,7 @@ public class MainActivity extends ActionBarActivity {
                         } catch (JSONException e) {
                             Log.d("quylogcat", e.getMessage());
                         }
-                        mWifiListView.setAdapter(new WifiListAdapter(mActivity,getWifiFromServer(mGPSTracking.getLat(), mGPSTracking.getLng())));
+                        getWifiFromServer(mLocation.getLatitude(),mLocation.getLongitude());
                     }
                 },
                 new Response.ErrorListener() {
@@ -253,16 +234,12 @@ public class MainActivity extends ActionBarActivity {
                         return params;
                     }
                 };
-
-        mRequestQueue.add(stringRequest);
+        AppController.getInstance().addToRequestQueue(stringRequest);
     }
 
-    public ArrayList<WifiModel> getWifiFromServer(final double lat, double lng){
+    public ArrayList<WifiModel> getWifiFromServer(double lat, double lng){
         final ArrayList<WifiModel> modelArrayList = new ArrayList<WifiModel>();
-        mRequestQueue = Volley.newRequestQueue(getApplicationContext());
         String url = SERVER_URL + "/" + lat + "/" + lng + "/" + DEFAULT_DISTANCE;
-
-
         JsonArrayRequest jsonArrayRequest = new JsonArrayRequest(url,
                 new Response.Listener<JSONArray>() {
                     @Override
@@ -289,8 +266,8 @@ public class MainActivity extends ActionBarActivity {
                         Log.d("quylogcat", error.getMessage());
                     }
                 });
-        jsonArrayRequest.setTag(TAG);
-        mRequestQueue.add(jsonArrayRequest);
+        AppController.getInstance().addToRequestQueue(jsonArrayRequest);
+        mWifiListView.setAdapter(new WifiListAdapter(this,modelArrayList));
         return modelArrayList;
     }
 }
